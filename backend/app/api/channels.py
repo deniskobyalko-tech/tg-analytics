@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import func, select
@@ -91,7 +91,7 @@ async def analyze_channel(
     result = await db.execute(select(Channel).where(Channel.username == username))
     channel = result.scalar_one_or_none()
 
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     if channel is None:
         # telegram_id is unknown from scraper; use a negative hash as placeholder
@@ -228,7 +228,7 @@ async def get_channel_history(
     if channel is None:
         return ApiResponse(success=False, error=f"Channel '{username}' not found")
 
-    since = datetime.now(UTC).date() - timedelta(days=days)
+    since = datetime.now(timezone.utc).replace(tzinfo=None).date() - timedelta(days=days)
     snaps_result = await db.execute(
         select(ChannelSnapshot)
         .where(ChannelSnapshot.channel_id == channel.id, ChannelSnapshot.date >= since)

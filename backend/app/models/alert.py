@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from sqlalchemy import Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
@@ -12,5 +12,5 @@ class AnomalyAlert(Base):
     message: Mapped[str] = mapped_column()
     value_before: Mapped[float] = mapped_column(Float)
     value_after: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     is_sent: Mapped[bool] = mapped_column(default=False)

@@ -1,5 +1,9 @@
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 from sqlalchemy import BigInteger, Date, Float, ForeignKey, String, UniqueConstraint
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -20,8 +24,8 @@ class Channel(Base):
     posts_per_week: Mapped[float] = mapped_column(Float, default=0.0)
     is_tracked: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC))
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC), onupdate=datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
     last_scraped_at: Mapped[datetime | None] = mapped_column(default=None)
     last_telethon_at: Mapped[datetime | None] = mapped_column(default=None)
     snapshots: Mapped[list["ChannelSnapshot"]] = relationship(back_populates="channel")

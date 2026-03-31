@@ -1,7 +1,11 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from sqlalchemy import BigInteger, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Post(Base):
@@ -19,4 +23,4 @@ class Post(Base):
     is_ad: Mapped[bool] = mapped_column(default=False)
     ad_price: Mapped[float | None] = mapped_column(Float, default=None)
     fwd_from_channel: Mapped[str | None] = mapped_column(String(100), default=None)
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now(UTC), onupdate=datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
