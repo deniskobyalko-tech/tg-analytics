@@ -135,7 +135,12 @@ async def analyze_channel(
         post = res.scalar_one_or_none()
         raw_date = raw.get("date")
         try:
-            post_date = datetime.fromisoformat(raw_date) if isinstance(raw_date, str) else (raw_date or now)
+            if isinstance(raw_date, str):
+                post_date = datetime.fromisoformat(raw_date).replace(tzinfo=None)
+            elif isinstance(raw_date, datetime):
+                post_date = raw_date.replace(tzinfo=None)
+            else:
+                post_date = now
         except (ValueError, TypeError):
             post_date = now
 
