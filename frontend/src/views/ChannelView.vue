@@ -1,18 +1,18 @@
 <template>
-  <div v-if="loading" class="text-center py-12 text-gray-500">Loading...</div>
+  <div v-if="loading" class="text-center py-12 text-gray-500">Загрузка...</div>
   <div v-else-if="error" class="text-center py-12 text-red-500">{{ error }}</div>
   <div v-else-if="channel" class="space-y-6">
     <ChannelHeader :channel="channel" />
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <MetricCard label="Subscribers" :value="channel.subscribers_count" />
-      <MetricCard label="Avg Views" :value="channel.avg_views" />
+      <MetricCard label="Подписчики" :value="channel.subscribers_count" />
+      <MetricCard label="Ср. просмотры" :value="channel.avg_views" />
       <MetricCard label="ER" :value="channel.er" format="percent" />
-      <MetricCard label="Posts/week" :value="channel.posts_per_week" />
+      <MetricCard label="Постов/нед." :value="channel.posts_per_week" />
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
-      <p class="text-gray-400 text-center">Detailed analytics coming soon</p>
+      <p class="text-gray-400 text-center">Подробная аналитика скоро будет</p>
     </div>
   </div>
 </template>
@@ -39,7 +39,7 @@ onMounted(async () => {
       error.value = resp.data.error || 'Channel not found'
     }
   } catch {
-    error.value = 'Failed to load channel'
+    error.value = 'Не удалось загрузить канал'
   } finally {
     loading.value = false
   }

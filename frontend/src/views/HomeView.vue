@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col items-center pt-16">
-    <h1 class="text-4xl font-bold text-gray-900 mb-2">TG Channel Analytics</h1>
-    <p class="text-gray-500 mb-8">Analyze any Telegram channel</p>
+    <h1 class="text-4xl font-bold text-gray-900 mb-2">TG Аналитика каналов</h1>
+    <p class="text-gray-500 mb-8">Анализ любого Telegram канала</p>
 
     <form @submit.prevent="onSearch" class="w-full max-w-xl flex gap-2">
       <input
         v-model="query"
         type="text"
-        placeholder="@channel or t.me/channel"
+        placeholder="@канал или t.me/канал"
         class="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <button
@@ -15,14 +15,14 @@
         :disabled="store.loading"
         class="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
       >
-        {{ store.loading ? 'Analyzing...' : 'Analyze' }}
+        {{ store.loading ? 'Анализирую...' : 'Анализ' }}
       </button>
     </form>
 
     <p v-if="store.error" class="mt-4 text-red-500">{{ store.error }}</p>
 
     <div v-if="recent.length" class="mt-12 w-full max-w-3xl">
-      <h2 class="text-lg font-semibold text-gray-700 mb-4">Recently viewed</h2>
+      <h2 class="text-lg font-semibold text-gray-700 mb-4">Недавно просмотренные</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <router-link
           v-for="ch in recent"
@@ -33,7 +33,7 @@
           <div class="font-medium text-gray-900">{{ ch.title }}</div>
           <div class="text-sm text-gray-500">@{{ ch.username }}</div>
           <div class="mt-2 text-sm text-gray-600">
-            {{ formatNumber(ch.subscribers_count) }} subscribers &middot; ER {{ ch.er }}%
+            {{ formatNumber(ch.subscribers_count) }} подписчиков &middot; ER {{ ch.er }}%
           </div>
         </router-link>
       </div>
