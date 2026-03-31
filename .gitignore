@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+*.session
+node_modules/
+dist/
+.vite/
+data/
+.superpowers/
