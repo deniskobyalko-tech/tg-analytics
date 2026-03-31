@@ -1,9 +1,20 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.health import router as health_router
-from app.api.channels import router as channels_router
 
-app = FastAPI(title="TG Channel Analytics")
+from app.api.channels import router as channels_router
+from app.api.health import router as health_router
+from app.workers.scheduler import start_scheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler()
+    yield
+
+
+app = FastAPI(title="TG Channel Analytics", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

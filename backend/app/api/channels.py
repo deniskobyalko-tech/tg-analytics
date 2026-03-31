@@ -33,7 +33,7 @@ def _compute_posts_per_week(posts: list[dict]) -> float:
         try:
             dt = datetime.fromisoformat(raw) if isinstance(raw, str) else raw
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=UTC)
+                dt = dt.replace(tzinfo=timezone.utc)
             dates.append(dt)
         except (ValueError, TypeError):
             continue
