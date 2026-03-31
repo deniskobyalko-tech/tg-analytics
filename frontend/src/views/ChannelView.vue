@@ -11,8 +11,33 @@
       <MetricCard label="Постов/нед." :value="channel.posts_per_week" />
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
-      <p class="text-gray-400 text-center">Подробная аналитика скоро будет</p>
+    <!-- Tabs -->
+    <div class="border-b border-gray-200">
+      <nav class="flex gap-4">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="activeTab = tab.id"
+          :class="[
+            'pb-2 px-1 text-sm font-medium border-b-2 transition',
+            activeTab === tab.id
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          ]"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+    </div>
+
+    <!-- Tab content -->
+    <GrowthChart v-if="activeTab === 'growth'" :username="channel.username" />
+    <ContentAnalysis v-else-if="activeTab === 'content'" :username="channel.username" />
+    <div v-else-if="activeTab === 'audience'" class="bg-white rounded-lg shadow p-6 text-center text-gray-400">
+      Анализ аудитории — скоро
+    </div>
+    <div v-else-if="activeTab === 'ads'" class="bg-white rounded-lg shadow p-6 text-center text-gray-400">
+      Анализ рекламы — скоро
     </div>
   </div>
 </template>
@@ -24,11 +49,21 @@ import { api, type ApiResponse } from '../api/client'
 import type { Channel } from '../stores/channels'
 import ChannelHeader from '../components/ChannelHeader.vue'
 import MetricCard from '../components/MetricCard.vue'
+import GrowthChart from '../components/GrowthChart.vue'
+import ContentAnalysis from '../components/ContentAnalysis.vue'
 
 const route = useRoute()
 const channel = ref<Channel | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const activeTab = ref('growth')
+
+const tabs = [
+  { id: 'growth', label: 'Динамика' },
+  { id: 'content', label: 'Контент' },
+  { id: 'audience', label: 'Аудитория' },
+  { id: 'ads', label: 'Реклама' },
+]
 
 onMounted(async () => {
   try {
@@ -36,7 +71,7 @@ onMounted(async () => {
     if (resp.data.success && resp.data.data) {
       channel.value = resp.data.data
     } else {
-      error.value = resp.data.error || 'Channel not found'
+      error.value = resp.data.error || 'Канал не найден'
     }
   } catch {
     error.value = 'Не удалось загрузить канал'
