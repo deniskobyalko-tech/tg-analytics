@@ -1,0 +1,11 @@
+[
+  {"name": "Marketing", "slug": "marketing", "keywords": ["маркетинг", "smm", "реклама", "digital", "таргет", "контент", "пиар", "брендинг"]},
+  {"name": "IT & Dev", "slug": "it", "keywords": ["python", "javascript", "программирование", "devops", "frontend", "backend", "code", "developer", "разработка", "it"]},
+  {"name": "Business", "slug": "business", "keywords": ["бизнес", "стартап", "предприниматель", "инвестиции", "финансы", "startup"]},
+  {"name": "News", "slug": "news", "keywords": ["новости", "news", "события", "breaking", "digest"]},
+  {"name": "Education", "slug": "education", "keywords": ["обучение", "курсы", "education", "tutorial", "учеба", "университет"]},
+  {"name": "Entertainment", "slug": "entertainment", "keywords": ["мемы", "юмор", "развлечения", "кино", "музыка", "games"]},
+  {"name": "Crypto", "slug": "crypto", "keywords": ["крипто", "bitcoin", "ethereum", "defi", "nft", "блокчейн", "crypto"]},
+  {"name": "Design", "slug": "design", "keywords": ["дизайн", "figma", "ui", "ux", "графика", "design"]},
+  {"name": "Other", "slug": "other", "keywords": []}
+]
