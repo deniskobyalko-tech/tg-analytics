@@ -30,6 +30,10 @@ class ChannelOut(BaseModel):
     avg_views: int
     er: float
     posts_per_week: float
+    is_tracked: bool = False
+    status: str = "active"
+    bot_is_admin: bool = False
+    extended_fetched_at: datetime | None = None
     last_scraped_at: datetime | None = None
     model_config = {"from_attributes": True}
 

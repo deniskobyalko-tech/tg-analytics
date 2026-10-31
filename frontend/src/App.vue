@@ -5,6 +5,7 @@
         <router-link to="/" class="text-xl font-bold text-blue-600">TG Analytics</router-link>
         <router-link to="/catalog" class="text-gray-600 hover:text-gray-900">Каталог</router-link>
         <router-link to="/compare" class="text-gray-600 hover:text-gray-900">Сравнение</router-link>
+        <router-link to="/watchlist" class="text-gray-600 hover:text-gray-900">Отслеживание</router-link>
       </div>
     </nav>
     <main class="max-w-7xl mx-auto px-4 py-6">

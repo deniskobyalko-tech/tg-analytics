@@ -82,3 +82,105 @@ async def fetch_channel_data(username: str) -> dict:
         logger.warning(f"FloodWait: sleeping {e.seconds}s")
         await asyncio.sleep(e.seconds)
         return await fetch_channel_data(username)
+
+
+# --- Extended stats helpers ---
+
+EVENT_TYPE_MAP = {
+    "ChannelAdminLogEventActionParticipantJoin": "join",
+    "ChannelAdminLogEventActionParticipantLeave": "leave",
+    "ChannelAdminLogEventActionEditMessage": "edit_message",
+    "ChannelAdminLogEventActionDeleteMessage": "delete_message",
+    "ChannelAdminLogEventActionUpdatePinned": "pin",
+}
+
+
+def parse_admin_log_event(event) -> dict:
+    """Parse a Telethon admin log event into a flat dict."""
+    action_class = event.action.__class__.__name__
+    event_type = EVENT_TYPE_MAP.get(action_class, action_class)
+    return {
+        "event_type": event_type,
+        "user_id": event.user_id,
+        "event_date": event.date.replace(tzinfo=None) if event.date else None,
+        "data": None,
+    }
+
+
+def parse_participant(user, participant) -> dict:
+    """Parse a Telethon user + participant into a flat dict."""
+    joined = getattr(participant, "date", None)
+    if joined and joined.tzinfo:
+        joined = joined.replace(tzinfo=None)
+    return {
+        "telegram_user_id": user.id,
+        "username": getattr(user, "username", None),
+        "first_name": getattr(user, "first_name", None),
+        "joined_at": joined,
+    }
+
+
+async def fetch_admin_log(username: str, limit: int = 100) -> list[dict]:
+    """Fetch admin log events (join/leave) for a channel."""
+    client = await get_client()
+    try:
+        from telethon.tl.functions.channels import GetAdminLogRequest
+        from telethon.tl.types import ChannelAdminLogEventsFilter
+
+        entity = await client.get_entity(username)
+        result = await client(GetAdminLogRequest(
+            channel=entity,
+            q="",
+            min_id=0,
+            max_id=0,
+            limit=limit,
+            events_filter=ChannelAdminLogEventsFilter(join=True, leave=True),
+            admins=[],
+        ))
+        return [parse_admin_log_event(e) for e in result.events]
+    except Exception as e:
+        logger.error("Failed to fetch admin log for %s: %s", username, e)
+        return []
+
+
+async def fetch_participants(username: str, limit: int = 200) -> list[dict]:
+    """Fetch channel participants (up to limit)."""
+    client = await get_client()
+    try:
+        entity = await client.get_entity(username)
+        participants = await client.get_participants(entity, limit=limit)
+        return [
+            parse_participant(p, p.participant)
+            for p in participants
+            if hasattr(p, "participant")
+        ]
+    except Exception as e:
+        logger.error("Failed to fetch participants for %s: %s", username, e)
+        return []
+
+
+async def fetch_invite_links(username: str) -> list[dict]:
+    """Fetch exported invite links for a channel."""
+    client = await get_client()
+    try:
+        from telethon.tl.functions.messages import GetExportedChatInvitesRequest
+
+        entity = await client.get_entity(username)
+        me = await client.get_me()
+        result = await client(GetExportedChatInvitesRequest(
+            peer=entity,
+            admin_id=me,
+            limit=50,
+            revoked=False,
+        ))
+        return [
+            {
+                "link": inv.link,
+                "creator_id": getattr(inv, "admin_id", None),
+                "usage_count": inv.usage or 0,
+            }
+            for inv in result.invites
+        ]
+    except Exception as e:
+        logger.error("Failed to fetch invite links for %s: %s", username, e)
+        return []

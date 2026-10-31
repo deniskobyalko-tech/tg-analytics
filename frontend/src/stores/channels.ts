@@ -13,6 +13,8 @@ export interface Channel {
   avg_views: number
   er: number
   posts_per_week: number
+  is_tracked: boolean
+  status: string
 }
 
 export const useChannelsStore = defineStore('channels', () => {

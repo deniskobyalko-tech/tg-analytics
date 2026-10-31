@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     CACHE_TTL_MINUTES: int = 60
     MAX_TRACKED_CHANNELS: int = 50
     ANALYSIS_QUEUE_MAX_CONCURRENT: int = 3
+    BOT_TOKEN: str = ""
     ALERT_TELEGRAM_BOT_TOKEN: str = ""
     ALERT_TELEGRAM_CHAT_ID: str = ""
 

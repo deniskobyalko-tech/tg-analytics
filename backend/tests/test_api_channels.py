@@ -1,56 +1,12 @@
 """Tests for the channels API routes.
 
-Uses an in-memory SQLite database (aiosqlite) so the tests run without
-a real PostgreSQL instance.
+Uses the shared in-memory SQLite database from conftest.py.
 """
-import asyncio
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.database import Base, get_db
 from app.main import app
-
-# ---------------------------------------------------------------------------
-# In-memory SQLite engine for tests
-# ---------------------------------------------------------------------------
-
-TEST_DB_URL = "sqlite+aiosqlite://"  # pure in-memory
-
-test_engine = create_async_engine(TEST_DB_URL, echo=False)
-TestSessionLocal = async_sessionmaker(
-    test_engine, class_=AsyncSession, expire_on_commit=False
-)
-
-
-async def override_get_db():
-    async with TestSessionLocal() as session:
-        yield session
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True, scope="module")
-def setup_db():
-    """Create all tables in the in-memory DB once per test module."""
-
-    async def _create():
-        async with test_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    asyncio.run(_create())
-    yield
-    # Tables remain for the module lifetime; engine is discarded after.
-
 
 client = TestClient(app)
 

@@ -7,8 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session
 from app.models.channel import Channel, ChannelSnapshot
-from app.services.scraper import fetch_channel_preview
+from app.models.post import Post
 from app.services.analyzer import calculate_er
+from app.services.anomaly import detect_inactive
+from app.services.scraper import fetch_channel_preview
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +21,12 @@ def _utcnow() -> datetime:
 
 async def update_all_channels():
     async with async_session() as db:
+        # Skip dead channels to save resources
         result = await db.execute(
-            select(Channel).order_by(Channel.last_scraped_at.asc()).limit(50)
+            select(Channel)
+            .where(Channel.status != "dead")
+            .order_by(Channel.last_scraped_at.asc())
+            .limit(50)
         )
         channels = result.scalars().all()
 
@@ -56,8 +62,18 @@ async def update_all_channels():
                     snapshot.avg_views = channel.avg_views
                     snapshot.er = channel.er
 
+                # Update channel status based on last post date
+                last_post = await db.execute(
+                    select(Post.date)
+                    .where(Post.channel_id == channel.id)
+                    .order_by(Post.date.desc())
+                    .limit(1)
+                )
+                last_post_date = last_post.scalar_one_or_none()
+                channel.status = detect_inactive(last_post_date)
+
                 await db.commit()
-                logger.info(f"Updated {channel.username}")
+                logger.info(f"Updated {channel.username} (status={channel.status})")
                 await asyncio.sleep(12)
 
             except Exception as e:

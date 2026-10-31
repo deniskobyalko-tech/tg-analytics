@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, Date, Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.category import ChannelCategory
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.core.database import Base
 
 
 class Channel(Base):
@@ -28,7 +36,14 @@ class Channel(Base):
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
     last_scraped_at: Mapped[datetime | None] = mapped_column(default=None)
     last_telethon_at: Mapped[datetime | None] = mapped_column(default=None)
+    bot_is_admin: Mapped[bool] = mapped_column(default=False)
+    extended_fetched_at: Mapped[datetime | None] = mapped_column(default=None)
     snapshots: Mapped[list["ChannelSnapshot"]] = relationship(back_populates="channel")
+    category_rel: Mapped["ChannelCategory | None"] = relationship(lazy="joined")
+
+    @property
+    def category(self) -> str | None:
+        return self.category_rel.name if self.category_rel else None
 
 
 class ChannelSnapshot(Base):

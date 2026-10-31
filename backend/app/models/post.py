@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import BigInteger, Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import BigInteger, Float, ForeignKey, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
@@ -23,4 +23,7 @@ class Post(Base):
     is_ad: Mapped[bool] = mapped_column(default=False)
     ad_price: Mapped[float | None] = mapped_column(Float, default=None)
     fwd_from_channel: Mapped[str | None] = mapped_column(String(100), default=None)
+    replies_count: Mapped[int] = mapped_column(default=0)
+    saves_count: Mapped[int] = mapped_column(default=0)
+    reactions_detail: Mapped[dict | None] = mapped_column(JSON, default=None)
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)

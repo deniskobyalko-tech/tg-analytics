@@ -8,10 +8,12 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.channel import Channel, ChannelSnapshot
 from app.models.post import Post
+from app.models.similarity import AudienceOverlap, ChannelSimilarity
 from app.schemas.channel import ChannelAnalyzeRequest, ChannelOut, ChannelSnapshotOut
 from app.schemas.common import ApiResponse, PaginationMeta
 from app.schemas.post import PostOut
 from app.services.analyzer import calculate_er, detect_ad_post
+from app.services.categorizer import categorize_channel
 from app.services.scraper import fetch_channel_posts, fetch_channel_preview
 
 router = APIRouter(prefix="/channels", tags=["channels"])
@@ -121,6 +123,19 @@ async def analyze_channel(
         channel.posts_per_week = posts_per_week
         channel.last_scraped_at = now
 
+    # 3b. Auto-categorize if not already assigned
+    if channel.category_id is None:
+        from app.models.category import ChannelCategory
+        cat_slug = categorize_channel(
+            channel.title, channel.description,
+        )
+        cat_result = await db.execute(
+            select(ChannelCategory).where(ChannelCategory.slug == cat_slug)
+        )
+        cat = cat_result.scalar_one_or_none()
+        if cat:
+            channel.category_id = cat.id
+
     # 4. Upsert Posts
     for raw in raw_posts:
         post_id = raw.get("telegram_post_id", 0)
@@ -169,21 +184,29 @@ async def analyze_channel(
     if channel.is_tracked and settings.TELETHON_ENABLED:
         background_tasks.add_task(_enrich_with_telethon, channel.id)
 
-    out = ChannelOut(
-        id=channel.id,
-        telegram_id=channel.telegram_id,
-        username=channel.username,
-        title=channel.title,
-        description=channel.description,
-        avatar_url=channel.avatar_url,
-        category=None,
-        subscribers_count=channel.subscribers_count,
-        avg_views=channel.avg_views,
-        er=channel.er,
-        posts_per_week=channel.posts_per_week,
-        last_scraped_at=channel.last_scraped_at,
-    )
-    return ApiResponse(success=True, data=out.model_dump())
+    return ApiResponse(success=True, data=ChannelOut.model_validate(channel).model_dump())
+
+
+# ---------------------------------------------------------------------------
+# GET /api/channels/{username}/extended
+# ---------------------------------------------------------------------------
+
+@router.get("/{username}/extended", response_model=ApiResponse)
+async def get_extended_stats(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse:
+    """On-demand extended statistics via Bot API + Telethon."""
+    from app.services.extended_stats import fetch_extended_stats
+
+    username = username.lstrip("@").lower()
+    result = await db.execute(select(Channel).where(Channel.username == username))
+    channel = result.scalar_one_or_none()
+    if channel is None:
+        return ApiResponse(success=False, error=f"Channel '{username}' not found")
+
+    data = await fetch_extended_stats(channel, db)
+    return ApiResponse(success=True, data=data)
 
 
 # ---------------------------------------------------------------------------
@@ -200,21 +223,7 @@ async def get_channel(
     channel = result.scalar_one_or_none()
     if channel is None:
         return ApiResponse(success=False, error=f"Channel '{username}' not found")
-    out = ChannelOut(
-        id=channel.id,
-        telegram_id=channel.telegram_id,
-        username=channel.username,
-        title=channel.title,
-        description=channel.description,
-        avatar_url=channel.avatar_url,
-        category=None,
-        subscribers_count=channel.subscribers_count,
-        avg_views=channel.avg_views,
-        er=channel.er,
-        posts_per_week=channel.posts_per_week,
-        last_scraped_at=channel.last_scraped_at,
-    )
-    return ApiResponse(success=True, data=out.model_dump())
+    return ApiResponse(success=True, data=ChannelOut.model_validate(channel).model_dump())
 
 
 # ---------------------------------------------------------------------------
@@ -288,3 +297,106 @@ async def get_channel_posts(
     data = [PostOut.model_validate(p).model_dump() for p in posts]
     meta = PaginationMeta(total=total, page=page, limit=limit)
     return ApiResponse(success=True, data=data, meta=meta)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/channels/{username}/similar
+# ---------------------------------------------------------------------------
+
+@router.get("/{username}/similar", response_model=ApiResponse)
+async def get_similar_channels(
+    username: str,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse:
+    """Return channels similar by topic (keyword overlap)."""
+    username = username.lstrip("@").lower()
+    result = await db.execute(select(Channel).where(Channel.username == username))
+    channel = result.scalar_one_or_none()
+    if channel is None:
+        return ApiResponse(success=False, error=f"Channel '{username}' not found")
+
+    rows = (
+        await db.execute(
+            select(ChannelSimilarity, Channel)
+            .join(Channel, Channel.id == ChannelSimilarity.similar_channel_id)
+            .where(ChannelSimilarity.channel_id == channel.id)
+            .order_by(ChannelSimilarity.score.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    data = [
+        {
+            **ChannelOut(
+                id=row.Channel.id,
+                telegram_id=row.Channel.telegram_id,
+                username=row.Channel.username,
+                title=row.Channel.title,
+                description=row.Channel.description,
+                avatar_url=row.Channel.avatar_url,
+                subscribers_count=row.Channel.subscribers_count,
+                avg_views=row.Channel.avg_views,
+                er=row.Channel.er,
+                posts_per_week=row.Channel.posts_per_week,
+                last_scraped_at=row.Channel.last_scraped_at,
+            ).model_dump(),
+            "similarity_score": row.ChannelSimilarity.score,
+            "match_type": row.ChannelSimilarity.match_type,
+        }
+        for row in rows
+    ]
+    return ApiResponse(success=True, data=data)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/channels/{username}/audience
+# ---------------------------------------------------------------------------
+
+@router.get("/{username}/audience", response_model=ApiResponse)
+async def get_audience_overlaps(
+    username: str,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+) -> ApiResponse:
+    """Return audience overlap estimates based on forward graph."""
+    username = username.lstrip("@").lower()
+    result = await db.execute(select(Channel).where(Channel.username == username))
+    channel = result.scalar_one_or_none()
+    if channel is None:
+        return ApiResponse(success=False, error=f"Channel '{username}' not found")
+
+    rows = (
+        await db.execute(
+            select(AudienceOverlap, Channel)
+            .join(
+                Channel,
+                Channel.id == AudienceOverlap.channel_b_id,
+            )
+            .where(AudienceOverlap.channel_a_id == channel.id)
+            .order_by(AudienceOverlap.overlap_percent.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    data = [
+        {
+            **ChannelOut(
+                id=row.Channel.id,
+                telegram_id=row.Channel.telegram_id,
+                username=row.Channel.username,
+                title=row.Channel.title,
+                description=row.Channel.description,
+                avatar_url=row.Channel.avatar_url,
+                subscribers_count=row.Channel.subscribers_count,
+                avg_views=row.Channel.avg_views,
+                er=row.Channel.er,
+                posts_per_week=row.Channel.posts_per_week,
+                last_scraped_at=row.Channel.last_scraped_at,
+            ).model_dump(),
+            "overlap_percent": row.AudienceOverlap.overlap_percent,
+            "calculated_at": row.AudienceOverlap.calculated_at.isoformat() if row.AudienceOverlap.calculated_at else None,
+        }
+        for row in rows
+    ]
+    return ApiResponse(success=True, data=data)

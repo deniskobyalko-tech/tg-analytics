@@ -10,7 +10,20 @@
       {{ channel.title[0] }}
     </div>
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">{{ channel.title }}</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-gray-900">{{ channel.title }}</h1>
+        <span
+          v-if="channel.status"
+          :class="[
+            'px-2 py-0.5 text-xs font-medium rounded-full',
+            channel.status === 'active' ? 'bg-green-100 text-green-700' :
+            channel.status === 'inactive' ? 'bg-yellow-100 text-yellow-700' :
+            'bg-red-100 text-red-700'
+          ]"
+        >
+          {{ channel.status === 'active' ? 'Активен' : channel.status === 'inactive' ? 'Неактивен' : 'Мёртв' }}
+        </span>
+      </div>
       <div class="text-gray-500">@{{ channel.username }}</div>
       <p v-if="channel.description" class="text-sm text-gray-600 mt-1 line-clamp-2">
         {{ channel.description }}
